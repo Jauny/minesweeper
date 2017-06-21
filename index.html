@@ -1,0 +1,142 @@
+<canvas id="canvas" width="401" height="401"></canvas>
+
+<script type="text/javascript">
+var canvas = document.getElementById('canvas');
+var ctx = canvas.getContext('2d');
+
+ts = 40;
+tc = canvas.width / ts;
+
+window.onload = function() {
+  ctx.fillStyle = 'grey';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  var game = new Board(10, 10, 1);
+  game.render();
+}
+
+var Board = function(w, h, mines) {
+  this.w = w;
+  this.h = h;
+  this.mines = mines;
+  this.lost = false;
+  this.win = false;
+
+  var cells = [];
+  for (var i = 0; i < w; i++) {
+    var col = [];
+    for (var j = 0; j < h; j++) {
+      col.push(new Cell());
+    }
+    cells.push(col);
+  }
+
+  for (var i = 0; i < mines; i++) {
+    var x = Math.floor(Math.random() * w)
+    var y = Math.floor(Math.random() * h)
+    cells[x][y].value = -1;
+  }
+
+  this.board = cells;
+
+  canvas.addEventListener('click', this.handleClick.bind(this));
+};
+
+Board.prototype.render = function() {
+  for (var i = 0; i < tc - 1; i++) {
+    for (var j = 0; j < tc - 1; j++) {
+      ctx.fillStyle = '#EBEBEB';
+      ctx.fillRect(i*ts+1, j*ts+1, ts - 1, ts - 1);
+    }
+  }
+};
+
+Board.prototype.renderCell = function(x, y) {
+  var board = this.board;
+
+  if (board[x][y].revealed) {
+    return;
+  }
+  board[x][y].revealed = true;
+
+  ctx.fillStyle = 'white';
+  ctx.fillRect(x*ts+1, y*ts+1, ts - 1, ts - 1);
+  if (board[x][y].value < 0) {
+    ctx.beginPath();
+    ctx.arc(x*ts+ts/2, y*ts+ts/2, ts/4, 0, 2 * Math.PI);
+    ctx.strokeStyle = 'grey';
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    this.lost = true;
+    return;
+  }
+
+  var count = 0;
+  var neighbors = this.neighbors(x, y)
+  neighbors.forEach(function(cell) {
+    if (board[cell.x][cell.y].value < 0) {
+      count++;
+    }
+  });
+
+  if (count > 0) {
+    board[x][y].value = count;
+    ctx.font = ts/2 + 'px serif';
+    ctx.fillStyle = 'black';
+    ctx.fillText(count, x*ts+15, y*ts+30);
+  }
+  if (count === 0) {
+    neighbors.forEach(function(cell) {
+      this.renderCell(cell.x, cell.y);
+    }, this);
+  }
+};
+
+Board.prototype.neighbors = function(x, y) {
+  var coords = [
+  [-1, -1], [0, -1], [1, -1],
+  [-1, 0], [1, 0],
+  [-1, 1], [0, 1], [1, 1]
+  ];
+
+  var neighbors = [];
+  for (var i = 0; i < coords.length; i++) {
+    var xx = x + coords[i][0];
+    var yy = y + coords[i][1];
+    if (xx >= 0 && xx < this.w && yy >= 0 && yy < this.h ) {
+      neighbors.push({x:xx, y: yy});
+    }
+  }
+
+  return neighbors;
+}
+
+Board.prototype.handleClick = function(e) {
+  if (this.lost) {
+    return;
+  }
+
+  var mx = e.pageX;
+  var my = e.pageY;
+
+  for (var i = 0; i < this.w; i++) {
+    for (var j = 0; j < this.h; j++) {
+      if (
+        (mx >= i * ts) && (mx < i * ts + ts) &&
+        (my >= j * ts) && (my < j * ts + ts)
+      ) {
+        this.renderCell(i, j);
+      }
+    }
+  }
+};
+
+var Cell = function() {
+  this.value = 0;
+  this.revealed = false;
+};
+
+
+
+</script>
