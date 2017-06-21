@@ -2,22 +2,18 @@
 
 <script type="text/javascript">
 var canvas = document.getElementById('canvas');
-var ctx = canvas.getContext('2d');
-
-ts = 40;
-tc = canvas.width / ts;
 
 window.onload = function() {
-  ctx.fillStyle = 'grey';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  var game = new Board(10, 10, 1);
+  var game = new Board(10, 10, 40, 10, canvas);
   game.render();
 }
 
-var Board = function(w, h, mines) {
+var Board = function(w, h, ts, mines, canvas) {
   this.w = w;
   this.h = h;
+  this.ts = ts;
+  this.tc = Math.floor(canvas.width / this.ts);
+  this.ctx = canvas.getContext('2d');
   this.mines = mines;
   this.lost = false;
   this.win = false;
@@ -40,13 +36,16 @@ var Board = function(w, h, mines) {
   this.board = cells;
 
   canvas.addEventListener('click', this.handleClick.bind(this));
+
+  this.ctx.fillStyle = 'grey';
+  this.ctx.fillRect(0, 0, canvas.width, canvas.height);
 };
 
 Board.prototype.render = function() {
-  for (var i = 0; i < tc - 1; i++) {
-    for (var j = 0; j < tc - 1; j++) {
-      ctx.fillStyle = '#EBEBEB';
-      ctx.fillRect(i*ts+1, j*ts+1, ts - 1, ts - 1);
+  for (var i = 0; i < this.tc; i++) {
+    for (var j = 0; j < this.tc; j++) {
+      this.ctx.fillStyle = '#EBEBEB';
+      this.ctx.fillRect(i*this.ts+1, j*this.ts+1, this.ts - 1, this.ts - 1);
     }
   }
 };
@@ -59,15 +58,15 @@ Board.prototype.renderCell = function(x, y) {
   }
   board[x][y].revealed = true;
 
-  ctx.fillStyle = 'white';
-  ctx.fillRect(x*ts+1, y*ts+1, ts - 1, ts - 1);
+  this.ctx.fillStyle = 'white';
+  this.ctx.fillRect(x*this.ts+1, y*this.ts+1, this.ts - 1, this.ts - 1);
   if (board[x][y].value < 0) {
-    ctx.beginPath();
-    ctx.arc(x*ts+ts/2, y*ts+ts/2, ts/4, 0, 2 * Math.PI);
-    ctx.strokeStyle = 'grey';
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    this.ctx.beginPath();
+    this.ctx.arc(x*this.ts+this.ts/2, y*this.ts+this.ts/2, this.ts/4, 0, 2 * Math.PI);
+    this.ctx.strokeStyle = 'grey';
+    this.ctx.stroke();
+    this.ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+    this.ctx.fillRect(0, 0, this.w * this.ts + 1, this.h * this.ts + 1);
     this.lost = true;
     return;
   }
@@ -82,9 +81,9 @@ Board.prototype.renderCell = function(x, y) {
 
   if (count > 0) {
     board[x][y].value = count;
-    ctx.font = ts/2 + 'px serif';
-    ctx.fillStyle = 'black';
-    ctx.fillText(count, x*ts+15, y*ts+30);
+    this.ctx.font = this.ts/2 + 'px serif';
+    this.ctx.fillStyle = 'black';
+    this.ctx.fillText(count, x*this.ts+15, y*this.ts+30);
   }
   if (count === 0) {
     neighbors.forEach(function(cell) {
@@ -113,7 +112,7 @@ Board.prototype.neighbors = function(x, y) {
 }
 
 Board.prototype.handleClick = function(e) {
-  if (this.lost) {
+  if (this.lost || this.win) {
     return;
   }
 
@@ -123,12 +122,27 @@ Board.prototype.handleClick = function(e) {
   for (var i = 0; i < this.w; i++) {
     for (var j = 0; j < this.h; j++) {
       if (
-        (mx >= i * ts) && (mx < i * ts + ts) &&
-        (my >= j * ts) && (my < j * ts + ts)
+        (mx >= i * this.ts) && (mx < i * this.ts + this.ts) &&
+        (my >= j * this.ts) && (my < j * this.ts + this.ts)
       ) {
         this.renderCell(i, j);
       }
     }
+  }
+
+  var revealedCount = 0;
+  this.board.forEach(function (col) {
+    col.forEach(function (cell) {
+      if (cell.revealed) {
+        revealedCount++;
+      }
+    })
+  })
+  if (revealedCount === this.tc * this.tc - this.mines) {
+    this.ctx.fillStyle = 'rgba(0, 255, 0, 0.2)';
+    this.ctx.fillRect(0, 0, this.w * this.ts + 1, this.h * this.ts + 1);
+    this.win = true;
+    return;
   }
 };
 
